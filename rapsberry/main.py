@@ -1,8 +1,29 @@
 import sys
 import numpy as np
 import pyqtgraph as pg
+import serial
+import struct
+import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget
 from PyQt5.QtCore import QTimer
+
+# Serial Port Configuration (Update this to match your Arduino's port)
+SERIAL_PORT = "/dev/ttyACM0"  # Change for Windows (e.g., "COM3")
+BAUD_RATE = 9600
+
+# Action codes (must match those in the Arduino code)
+STOP_ACQUISITION = 1
+START_ACQUISITION = 2
+ACQUIRING_DATA = 3
+SET_TIMESTEP = 4
+
+# Attempt to connect to the Arduino
+try:
+    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+    time.sleep(2)  # Allow time for Arduino to reset
+except serial.SerialException:
+    print("Error: Could not open serial port.")
+    ser = None
 
 class DataPlotter(QMainWindow):
     def __init__(self):
@@ -44,9 +65,13 @@ class DataPlotter(QMainWindow):
         self.plot_curve = self.plot_widget.plot(pen="y")
 
     def start_acquisition(self):
-        self.timer.start(100)  # Update every 100 ms
+        if ser:
+            ser.write(bytes([START_ACQUISITION, 0]))  # Start data acquisition on A0
+            self.timer.start(100)  # Update every 100 ms
 
     def stop_acquisition(self):
+        if ser:
+            ser.write(bytes([STOP_ACQUISITION]))  # Stop data acquisition
         self.timer.stop()
 
     def clear_plot(self):
@@ -54,14 +79,28 @@ class DataPlotter(QMainWindow):
         self.plot_curve.setData([])
 
     def update_plot(self):
-        # Simulated data (replace this with actual Arduino data)
-        new_value = np.random.normal()
-        self.data.append(new_value)
-        
-        if len(self.data) > 100:
-            self.data.pop(0)  # Keep only the last 100 points
+        if ser:
+            new_value = self.read_arduino_data()
+            if new_value is not None:
+                self.data.append(new_value)
 
-        self.plot_curve.setData(self.data)
+                if len(self.data) > 100:
+                    self.data.pop(0)  # Keep only the last 100 points
+
+                self.plot_curve.setData(self.data)
+
+    def read_arduino_data(self):
+        """ Reads 12 bytes from Arduino and extracts slope, intercept, and uncertainty. """
+        expected_bytes = 12  # 3 floats * 4 bytes each
+        data = ser.read(expected_bytes)
+
+        if len(data) != expected_bytes:
+            print("Error: Incomplete data received")
+            return None
+
+        # Unpack binary data into three little-endian floats
+        slope, intercept, uncertainty = struct.unpack("<fff", data)
+        return slope  # Use the slope value for plotting
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
