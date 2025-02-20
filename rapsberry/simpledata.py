@@ -14,7 +14,7 @@ SET_TIMESTEP     = 4
 
 # Initialize serial connection
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-time.sleep(2)  # Allow time for Arduino to reset
+time.sleep(2)  # Allow time for Arduino to reset: at least 1.5 seconds
 
 def start_acquisition(pin_index):
     """
@@ -58,7 +58,7 @@ def main():
     # Optionally, you can change the timestep by calling:
     # set_timestep(1000)
 
-    # Wait sufficient time for the Arduino to acquire and process data
+    # time for the Arduino to acquire and process data: 0.1 seems enough
     time.sleep(2)
 
     # Read and display the results from the Arduino

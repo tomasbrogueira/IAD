@@ -4,6 +4,7 @@
 int pins[6] = {A0, A1, A2, A3, A4, A5};
 int sensorPin = 0; // variable to store the value coming from the sensor
 int timestep = 1000;
+const unsigned int numReadings = 128;
 
 enum ActionCode {
     STOP_ACQUISITION = 1,
@@ -31,7 +32,7 @@ void setup() {
 
 void loop() {
     // wait for a signal from the serial bus to acquire data
-    if (Serial.available() > 0) {
+    if (Serial.available() >= 2) {
         action = (enum ActionCode)Serial.read();
         
     }
@@ -53,10 +54,10 @@ void loop() {
 }
 
 void acquireData() {
-    int sensorValue[128];
-    for (int i = 0; i < 128; i++) {
+    int sensorValue[numReadings];
+    for (int i = 0; i < numReadings; i++) {
         sensorValue[i] = analogRead(sensorPin);
-        delay(timestep/128);
+        delay(timestep/numReadings);
     }
     arduinoData results = linearRegression(sensorValue);
     Serial.write((uint8_t*)&results, sizeof(results));
@@ -64,23 +65,23 @@ void acquireData() {
 
 arduinoData linearRegression (int* sensorValue) {
     float sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < numReadings; i++) {
         sumX += i;
         sumY += sensorValue[i];
         sumXY += i * sensorValue[i];
         sumX2 += i * i;
     }
 
-    float slope = (128 * sumXY - sumX * sumY) / (128 * sumX2 - sumX * sumX);
-    float intercept = (sumY - slope * sumX) / 128;
+    float slope = (numReadings * sumXY - sumX * sumY) / (numReadings * sumX2 - sumX * sumX);
+    float intercept = (sumY - slope * sumX) / numReadings;
 
     // Calculate uncertainty (standard error of the estimate)
     float sumError = 0;
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < numReadings; i++) {
         float predictedY = slope * i + intercept;
         sumError += (sensorValue[i] - predictedY) * (sensorValue[i] - predictedY);
     }
-    float uncertainty = sqrt(sumError / (128 - 2));
+    float uncertainty = sqrt(sumError / (numReadings - 2));
 
     arduinoData results = {slope, intercept, uncertainty};
     return results;
