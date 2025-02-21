@@ -76,7 +76,7 @@ class DataPlotter(QMainWindow):
     def set_acquisition_time(self):
         """ Send the selected acquisition time to the Arduino """
         if ser:
-            timestep = int(self.time_dropdown.currentText()) / 100 # Get selected time in ms
+            timestep = int(self.time_dropdown.currentText() / 100) # Get selected time in ms
             print(f"Setting acquisition time: {timestep} ms")
             ser.write(bytes([SET_TIMESTEP, timestep]))  # Send command
 
