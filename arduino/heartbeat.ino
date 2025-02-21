@@ -37,45 +37,12 @@ void loop() {
     if (action == START_ACQUISITION)
     {
         sensorPin = pins[Serial.read()];
-        acquireData();
+        int value = analogRead(sensorPin);
+        Serial.write((uint8_t*)&value, sizeof(value));
     }
     if (action == SET_TIMESTEP)
     {
         timestep = Serial.read() * 100;
     }
     action = STOP_ACQUISITION;
-}
-
-void acquireData() {
-    int sensorValue[numReadings];
-    for (int i = 0; i < numReadings; i++) {
-        sensorValue[i] = analogRead(sensorPin);
-        delay(timestep/numReadings);
-    }
-    arduinoData results = linearRegression(sensorValue);
-    Serial.write((uint8_t*)&results, sizeof(results));
-}
-
-arduinoData linearRegression (int* sensorValue) {
-    float sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    for (int i = 0; i < numReadings; i++) {
-        sumX += i;
-        sumY += sensorValue[i];
-        sumXY += i * sensorValue[i];
-        sumX2 += i * i;
-    }
-
-    float slope = (numReadings * sumXY - sumX * sumY) / (numReadings * sumX2 - sumX * sumX);
-    float intercept = (sumY - slope * sumX) / numReadings;
-
-    // Calculate uncertainty (standard error of the estimate)
-    float sumError = 0;
-    for (int i = 0; i < numReadings; i++) {
-        float predictedY = slope * i + intercept;
-        sumError += (sensorValue[i] - predictedY) * (sensorValue[i] - predictedY);
-    }
-    float uncertainty = sqrt(sumError / (numReadings - 2));
-
-    arduinoData results = {slope, intercept, uncertainty};
-    return results;
 }
