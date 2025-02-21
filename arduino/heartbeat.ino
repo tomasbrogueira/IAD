@@ -1,24 +1,16 @@
 # include <Arduino.h>
-
 // array of pins to use
 int pins[6] = {A0, A1, A2, A3, A4, A5};
+int pin = -1;
 int sensorPin = 0; // variable to store the value coming from the sensor
 int timestep = 1000;
 const unsigned int numReadings = 8;
+unsigned long currentTime;
 
 enum ActionCode {
     STOP_ACQUISITION = 1,
     START_ACQUISITION = 2,
-    SET_TIMESTEP = 3
 } action;
-
-typedef struct 
-{
-    float slope;
-    float intercept;
-    float uncertainty;
-} arduinoData;
-
 
 void setup() {
   // initialize serial communication at 9600 bits per second:
@@ -36,13 +28,12 @@ void loop() {
     }
     if (action == START_ACQUISITION)
     {
-        sensorPin = pins[Serial.read()];
+        sensorPin = pins[pin = Serial.read()];
         int value = analogRead(sensorPin);
+        currentTime = millis();
         Serial.write((uint8_t*)&value, sizeof(value));
-    }
-    if (action == SET_TIMESTEP)
-    {
-        timestep = Serial.read() * 100;
+        Serial.write((uint8_t*)&pin, sizeof(pin));
+        Serial.write((uint8_t*)&currentTime, sizeof(currentTime));
     }
     action = STOP_ACQUISITION;
 }
