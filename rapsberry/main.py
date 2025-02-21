@@ -49,7 +49,7 @@ class DataPlotter(QMainWindow):
         layout.addWidget(self.time_label)
 
         self.time_dropdown = QComboBox()
-        self.time_dropdown.addItems(["50", "100", "200", "500", "1000"])  # Options in milliseconds
+        self.time_dropdown.addItems(["100", "200", "500", "1000"])  # Options in milliseconds
         self.time_dropdown.currentIndexChanged.connect(self.set_acquisition_time)
         layout.addWidget(self.time_dropdown)
 
@@ -76,11 +76,9 @@ class DataPlotter(QMainWindow):
     def set_acquisition_time(self):
         """ Send the selected acquisition time to the Arduino """
         if ser:
-            timestep = int(self.time_dropdown.currentText())  # Get selected time in ms
+            timestep = int(self.time_dropdown.currentText()) / 100 # Get selected time in ms
             print(f"Setting acquisition time: {timestep} ms")
-            ser.write(bytes([SET_TIMESTEP]))  # Send command
-            ser.write(struct.pack("<I", timestep))  # Send timestep as 4-byte little-endian integer
-
+            ser.write(bytes([SET_TIMESTEP, timestep]))  # Send command
 
     def start_acquisition(self):
         if ser:
