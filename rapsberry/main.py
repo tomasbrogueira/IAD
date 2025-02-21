@@ -4,7 +4,7 @@ import pyqtgraph as pg
 import serial
 import struct
 import time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QLabel, QComboBox
 from PyQt5.QtCore import QTimer
 
 # Serial Port Configuration (Update this to match your Arduino's port)
@@ -44,6 +44,15 @@ class DataPlotter(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+        # Dropdown for acquisition time
+        self.time_label = QLabel("Select Acquisition Time (ms):")
+        layout.addWidget(self.time_label)
+
+        self.time_dropdown = QComboBox()
+        self.time_dropdown.addItems(["50", "100", "200", "500", "1000"])  # Options in milliseconds
+        self.time_dropdown.currentIndexChanged.connect(self.set_acquisition_time)
+        layout.addWidget(self.time_dropdown)
+
         # Start and Stop buttons
         self.start_button = QPushButton("Start")
         self.start_button.clicked.connect(self.start_acquisition)
@@ -63,6 +72,15 @@ class DataPlotter(QMainWindow):
         layout.addWidget(self.plot_widget)
 
         self.plot_curve = self.plot_widget.plot(pen="y")
+
+    def set_acquisition_time(self):
+        """ Send the selected acquisition time to the Arduino """
+        if ser:
+            timestep = int(self.time_dropdown.currentText())  # Get selected time in ms
+            print(f"Setting acquisition time: {timestep} ms")
+            ser.write(bytes([SET_TIMESTEP]))  # Send command
+            ser.write(struct.pack("<I", timestep))  # Send timestep as 4-byte little-endian integer
+
 
     def start_acquisition(self):
         if ser:

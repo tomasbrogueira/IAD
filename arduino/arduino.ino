@@ -24,7 +24,7 @@ typedef struct
 void setup() {
   // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
-  // initialize the digital pins as an output:
+  // initialize the digital pins as an INPUT:
   for (int i = 0; i < 6; i++) {
     pinMode(pins[i], INPUT);
   }
@@ -47,7 +47,7 @@ void loop() {
     }
     if (action == SET_TIMESTEP)
     {
-        timestep = Serial.parseInt();
+        timestep = Serial.read() * 100;
         action = ACQUIRING_DATA;
     }
   
