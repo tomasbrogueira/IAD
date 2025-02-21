@@ -4,13 +4,12 @@
 int pins[6] = {A0, A1, A2, A3, A4, A5};
 int sensorPin = 0; // variable to store the value coming from the sensor
 int timestep = 1000;
-const unsigned int numReadings = 128;
+const unsigned int numReadings = 8;
 
 enum ActionCode {
     STOP_ACQUISITION = 1,
     START_ACQUISITION = 2,
-    ACQUIRING_DATA = 3,
-    SET_TIMESTEP = 4
+    SET_TIMESTEP = 3
 } action;
 
 typedef struct 
@@ -34,23 +33,17 @@ void loop() {
     // wait for a signal from the serial bus to acquire data
     if (Serial.available() >= 2) {
         action = (enum ActionCode)Serial.read();
-        
     }
     if (action == START_ACQUISITION)
     {
         sensorPin = pins[Serial.read()];
-        action = ACQUIRING_DATA;
-    }
-    
-    if (action == ACQUIRING_DATA) {
         acquireData();
     }
     if (action == SET_TIMESTEP)
     {
         timestep = Serial.read() * 100;
-        action = ACQUIRING_DATA;
     }
-  
+    action = STOP_ACQUISITION;
 }
 
 void acquireData() {
