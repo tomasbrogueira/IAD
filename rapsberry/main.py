@@ -37,6 +37,8 @@ class DataPlotter(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
 
+        self.current_pin = 0
+
     def initUI(self):
         # Create central widget and layout
         central_widget = QWidget()
@@ -52,6 +54,15 @@ class DataPlotter(QMainWindow):
         self.time_dropdown.addItems(["100", "200", "500", "1000"])  # Options in milliseconds
         self.time_dropdown.currentIndexChanged.connect(self.set_acquisition_time)
         layout.addWidget(self.time_dropdown)
+
+        # Dropdown for pin selection
+        self.pin_label = QLabel("Select Analog Pin:")
+        layout.addWidget(self.pin_label)
+
+        self.pin_dropdown = QComboBox()
+        self.pin_dropdown.addItems(["A0", "A1", "A2", "A3", "A4", "A5"])
+        self.pin_dropdown.currentIndexChanged.connect(self.set_acquisition_pin)
+        layout.addWidget(self.pin_dropdown)
 
         # Start and Stop buttons
         self.start_button = QPushButton("Start")
@@ -73,6 +84,11 @@ class DataPlotter(QMainWindow):
 
         self.plot_curve = self.plot_widget.plot(pen="y")
 
+    def set_acquisition_pin(self):
+        # Update the current pin
+        self.current_pin = self.pin_dropdown.currentIndex()
+        print(f"Setting acquisition pin: {self.current_pin}")
+
     def set_acquisition_time(self):
         """ Send the selected acquisition time to the Arduino """
         if ser:
@@ -82,7 +98,7 @@ class DataPlotter(QMainWindow):
 
     def start_acquisition(self):
         if ser:
-            ser.write(bytes([START_ACQUISITION, 0]))  # Start data acquisition on A0
+            ser.write(bytes([START_ACQUISITION, self.current_pin]))  # Start data acquisition on A0
             self.timer.start(100)  # Update every 100 ms
 
     def stop_acquisition(self):
@@ -107,7 +123,7 @@ class DataPlotter(QMainWindow):
 
     def read_arduino_data(self):
         """ Reads 12 bytes from Arduino and extracts slope, intercept, and uncertainty. """
-        expected_bytes = 12  # 3 floats * 4 bytes each
+        expected_bytes = 12 # 3 int * 4 bytes 
         data = ser.read(expected_bytes)
 
         if len(data) != expected_bytes:
@@ -115,8 +131,8 @@ class DataPlotter(QMainWindow):
             return None
 
         # Unpack binary data into three little-endian floats
-        slope, intercept, uncertainty = struct.unpack("<fff", data)
-        return slope  # Use the slope value for plotting
+        time, value, pin = struct.unpack("<iii", data)
+        return time, value, pin
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
