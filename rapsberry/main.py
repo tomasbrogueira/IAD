@@ -112,7 +112,7 @@ class DataPlotter(QMainWindow):
 
     def update_plot(self):
         if ser:
-            new_value = self.read_arduino_data()
+            new_value = self.read_arduino_data()[1]
             if new_value is not None:
                 self.data.append(new_value)
 
@@ -131,7 +131,7 @@ class DataPlotter(QMainWindow):
             return None
 
         # Unpack binary data into three little-endian floats
-        time, value, pin = struct.unpack("<iii", data)
+        value, pin, time = struct.unpack("<iii", data)
         return time, value, pin
 
 if __name__ == "__main__":
