@@ -3,8 +3,6 @@
 int pins[6] = {A0, A1, A2, A3, A4, A5};
 int pin = -1;
 int sensorPin = 0; // variable to store the value coming from the sensor
-int timestep = 1000;
-const unsigned int numReadings = 8;
 unsigned long currentTime;
 
 enum ActionCode {

@@ -14,8 +14,6 @@ BAUD_RATE = 9600
 # Action codes (must match those in the Arduino code)
 STOP_ACQUISITION = 1
 START_ACQUISITION = 2
-ACQUIRING_DATA = 3
-SET_TIMESTEP = 4
 
 # Attempt to connect to the Arduino
 try:
@@ -38,6 +36,7 @@ class DataPlotter(QMainWindow):
         self.timer.timeout.connect(self.update_plot)
 
         self.current_pin = 0
+        self.timestep = 100
 
     def initUI(self):
         # Create central widget and layout
@@ -91,19 +90,16 @@ class DataPlotter(QMainWindow):
 
     def set_acquisition_time(self):
         """ Send the selected acquisition time to the Arduino """
-        if ser:
-            timestep = int(int(self.time_dropdown.currentText()) / 100) # Get selected time in ms
-            print(f"Setting acquisition time: {timestep} ms")
-            ser.write(bytes([SET_TIMESTEP, timestep]))  # Send command
+        self.timestep = int(self.time_dropdown.currentText()) # Get selected time in ms
+        print(f"Setting acquisition time: {slef.timestep} ms")
 
     def start_acquisition(self):
         if ser:
+            ser.reset_input_buffer()
             ser.write(bytes([START_ACQUISITION, self.current_pin]))  # Start data acquisition on A0
-            self.timer.start(100)  # Update every 100 ms
+        self.timer.start(self.timestep)  # Update every 100 ms
 
     def stop_acquisition(self):
-        if ser:
-            ser.write(bytes([STOP_ACQUISITION]))  # Stop data acquisition
         self.timer.stop()
 
     def clear_plot(self):
@@ -123,15 +119,17 @@ class DataPlotter(QMainWindow):
 
     def read_arduino_data(self):
         """ Reads 12 bytes from Arduino and extracts slope, intercept, and uncertainty. """
-        expected_bytes = 12 # 3 int * 4 bytes 
+        expected_bytes = 12 # 2 int * 4 bytes + 1 unsigned long * 4 bytes
         data = ser.read(expected_bytes)
 
         if len(data) != expected_bytes:
             print("Error: Incomplete data received")
             return None
+        if ser:
+            ser.write(bytes([START_ACQUISITION, self.current_pin]))  # Start data acquisition on A0
 
-        # Unpack binary data into three little-endian floats
-        value, pin, time = struct.unpack("<iii", data)
+        # Unpack binary data into three little-endian ints
+        value, pin, time = struct.unpack("<iiI", data)
         return time, value, pin
 
 if __name__ == "__main__":
