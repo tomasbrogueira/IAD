@@ -1,21 +1,22 @@
 import sys
-import numpy as np
-import pyqtgraph as pg
 import serial
 import struct
 import time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QWidget, QLabel, QComboBox
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QSizePolicy, QMainWindow, QApplication, QListWidget, QAbstractItemView
+)
+import pyqtgraph as pg
 from PyQt5.QtCore import QTimer
 
-# Serial Port Configuration (Update this to match your Arduino's port)
+# Serial Port Configuration (Update as needed)
 SERIAL_PORT = "/dev/ttyACM0"  # Change for Windows (e.g., "COM3")
 BAUD_RATE = 9600
 
-# Action codes (must match those in the Arduino code)
+# Action codes (must match those in Arduino)
 STOP_ACQUISITION = 1
 START_ACQUISITION = 2
 
-# Attempt to connect to the Arduino
+# Attempt to connect to Arduino
 try:
     ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
     time.sleep(2)  # Allow time for Arduino to reset
@@ -27,110 +28,153 @@ class DataPlotter(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Arduino Data Plotter")
+        self.setWindowTitle("Arduino Multi-Pin Data Plotter")
         self.setGeometry(100, 100, 800, 500)
 
         self.initUI()
-        self.data = []
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
 
-        self.current_pin = 0
-        self.timestep = 100
+        self.timestep = 100  # Default acquisition time
+        self.selected_pins = []  # List to store selected pins
+        self.data = {}  # Dictionary to store data for each pin
+        self.plot_curves = {}  # Dictionary for plot curves
+        self.starting_time = None
 
     def initUI(self):
         # Create central widget and layout
         central_widget = QWidget()
-        layout = QVBoxLayout()
-        central_widget.setLayout(layout)
+        main_layout = QVBoxLayout()
+        central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
+
+        # Create horizontal layout for dropdowns
+        dropdown_layout = QVBoxLayout()
+        dropdown_widget = QWidget()
+        dropdown_widget.setLayout(dropdown_layout)
+        dropdown_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         # Dropdown for acquisition time
         self.time_label = QLabel("Select Acquisition Time (ms):")
-        layout.addWidget(self.time_label)
+        dropdown_layout.addWidget(self.time_label)
 
         self.time_dropdown = QComboBox()
-        self.time_dropdown.addItems(["100", "200", "500", "1000"])  # Options in milliseconds
+        self.time_dropdown.addItems(["100", "200", "500", "1000"])
         self.time_dropdown.currentIndexChanged.connect(self.set_acquisition_time)
-        layout.addWidget(self.time_dropdown)
+        self.time_dropdown.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        dropdown_layout.addWidget(self.time_dropdown)
 
-        # Dropdown for pin selection
-        self.pin_label = QLabel("Select Analog Pin:")
-        layout.addWidget(self.pin_label)
+        # Multi-selection list for pin selection
+        self.pin_label = QLabel("Select Analog Pins:")
+        dropdown_layout.addWidget(self.pin_label)
 
-        self.pin_dropdown = QComboBox()
-        self.pin_dropdown.addItems(["A0", "A1", "A2", "A3", "A4", "A5"])
-        self.pin_dropdown.currentIndexChanged.connect(self.set_acquisition_pin)
-        layout.addWidget(self.pin_dropdown)
+        self.pin_list = QListWidget()
+        self.pin_list.addItems(["A0", "A1", "A2", "A3", "A4", "A5"])
+        self.pin_list.setSelectionMode(QAbstractItemView.MultiSelection)
+        self.pin_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        dropdown_layout.addWidget(self.pin_list)
+
+        # Create horizontal layout for buttons
+        button_layout = QVBoxLayout()
+        button_widget = QWidget()
+        button_widget.setLayout(button_layout)
+        button_widget.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
 
         # Start and Stop buttons
         self.start_button = QPushButton("Start")
         self.start_button.clicked.connect(self.start_acquisition)
-        layout.addWidget(self.start_button)
+        button_layout.addWidget(self.start_button)
 
         self.stop_button = QPushButton("Stop")
         self.stop_button.clicked.connect(self.stop_acquisition)
-        layout.addWidget(self.stop_button)
+        button_layout.addWidget(self.stop_button)
 
         # Reset button
         self.reset_button = QPushButton("Reset")
         self.reset_button.clicked.connect(self.clear_plot)
-        layout.addWidget(self.reset_button)
+        button_layout.addWidget(self.reset_button)
+
+        # Create horizontal layout for dropdowns and buttons
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(dropdown_widget, 2)
+        top_layout.addWidget(button_widget, 1)
+        main_layout.addLayout(top_layout)
 
         # Create plot widget
         self.plot_widget = pg.PlotWidget()
-        layout.addWidget(self.plot_widget)
+        self.plot_widget.addLegend()
+        main_layout.addWidget(self.plot_widget)
 
-        self.plot_curve = self.plot_widget.plot(pen="y")
-
-    def set_acquisition_pin(self):
-        # Update the current pin
-        self.current_pin = self.pin_dropdown.currentIndex()
-        print(f"Setting acquisition pin: {self.current_pin}")
+    def get_selected_pins(self):
+        """ Returns a list of selected analog pins """
+        selected_items = self.pin_list.selectedItems()
+        return [item.text() for item in selected_items]
 
     def set_acquisition_time(self):
-        """ Send the selected acquisition time to the Arduino """
-        self.timestep = int(self.time_dropdown.currentText()) # Get selected time in ms
-        print(f"Setting acquisition time: {slef.timestep} ms")
+        """ Updates the acquisition time based on dropdown selection """
+        self.timestep = int(self.time_dropdown.currentText())
+        print(f"Acquisition time set to: {self.timestep} ms")
 
     def start_acquisition(self):
+        """ Starts data acquisition for multiple pins """
         if ser:
-            ser.reset_input_buffer()
-            ser.write(bytes([START_ACQUISITION, self.current_pin]))  # Start data acquisition on A0
-        self.timer.start(self.timestep)  # Update every 100 ms
+            self.selected_pins = self.get_selected_pins()
+            self.data = {pin: [] for pin in self.selected_pins}  # Initialize data storage
+            self.plot_curves = {}  # Clear old curves
+
+            # Create a different color for each pin
+            colors = ['r', 'g', 'b', 'y', 'm', 'c']  
+            
+            for i, pin in enumerate(self.selected_pins):
+                self.plot_curves[pin] = self.plot_widget.plot(
+                    pen=colors[i % len(colors)], name=pin
+                )
+
+            # Send start signal for each pin
+            for pin in self.selected_pins:
+                pin_number = int(pin[1])  # Convert "A0" to 0, "A1" to 1, etc.
+                ser.write(bytes([START_ACQUISITION, pin_number]))
+
+            self.timer.start(self.timestep)
 
     def stop_acquisition(self):
+        """ Stops data acquisition """
         self.timer.stop()
+        if ser:
+            ser.write(bytes([STOP_ACQUISITION]))
 
     def clear_plot(self):
-        self.data = []
-        self.plot_curve.setData([])
+        """ Clears the plot """
+        self.data = {pin: [] for pin in self.selected_pins}
+        for curve in self.plot_curves.values():
+            curve.setData([])
 
     def update_plot(self):
+        """ Reads and plots data from multiple pins """
         if ser:
-            new_value = self.read_arduino_data()[1]
-            if new_value is not None:
-                self.data.append(new_value)
+            pin, value, timestamp = self.read_arduino_data()
 
-                if len(self.data) > 100:
-                    self.data.pop(0)  # Keep only the last 100 points
+            if pin in self.data:
+                self.data[pin].append(value)
 
-                self.plot_curve.setData(self.data)
+                # Keep only the last 100 points
+                if len(self.data[pin]) > 100:
+                    self.data[pin].pop(0)
+
+                self.plot_curves[pin].setData(self.data[pin])
 
     def read_arduino_data(self):
-        """ Reads 12 bytes from Arduino and extracts slope, intercept, and uncertainty. """
-        expected_bytes = 12 # 2 int * 4 bytes + 1 unsigned long * 4 bytes
+        """ Reads 12 bytes from Arduino and extracts timestamp, pin, and value """
+        expected_bytes = 8  # 2 int (2 bytes each) + 1 long
         data = ser.read(expected_bytes)
 
         if len(data) != expected_bytes:
             print("Error: Incomplete data received")
-            return None
-        if ser:
-            ser.write(bytes([START_ACQUISITION, self.current_pin]))  # Start data acquisition on A0
+            return None, None, None
 
-        # Unpack binary data into three little-endian ints
-        value, pin, time = struct.unpack("<iiI", data)
-        return time, value, pin
+        value, pin_number, timestamp = struct.unpack("<iiI", data)
+        pin = f"A{pin_number}"
+        return pin, value, timestamp
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
