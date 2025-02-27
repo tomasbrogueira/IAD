@@ -172,7 +172,7 @@ class DataPlotter(QMainWindow):
             print("Error: Incomplete data received")
             return None, None, None
 
-        value, pin_number, timestamp = struct.unpack("<iiI", data)
+        value, pin_number, timestamp = struct.unpack("<hhI", data)
         pin = f"A{pin_number}"
         return pin, value, timestamp
 
