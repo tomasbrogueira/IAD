@@ -3,7 +3,7 @@ import serial
 import struct
 import time
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QSizePolicy, QMainWindow, QApplication, QListWidget, QAbstractItemView, QFormLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QSizePolicy, QMainWindow, QApplication, QListWidget, QAbstractItemView, QLineEdit
 )
 import pyqtgraph as pg
 from PyQt5.QtCore import QTimer
@@ -107,6 +107,11 @@ class DataPlotter(QMainWindow):
         button_layout.addWidget(self.ADCswitch)
         button_layout.addWidget(self.ADClabel)
 
+        # simple terminal window to input commands
+        self.command_line = QLineEdit()
+        self.command_line.returnPressed.connect(self.send_command)
+        button_layout.addWidget(self.command_line)
+
         # Create horizontal layout for dropdowns and buttons
         top_layout = QHBoxLayout()
         top_layout.addWidget(dropdown_widget, 2)
@@ -123,11 +128,32 @@ class DataPlotter(QMainWindow):
         selected_items = self.pin_list.selectedItems()
         return [item.text() for item in selected_items]
 
-    def set_acquisition_time(self):
+    def set_acquisition_time(self, timestep=None):
         """ Updates the acquisition time based on dropdown selection """
-        self.timestep = int(self.time_dropdown.currentText())
+        if not timestep:
+            self.timestep = int(self.time_dropdown.currentText())
+        else:
+            self.timestep = timestep
         print(f"Acquisition time set to: {self.timestep} ms")
         self.timer.start(self.timestep)
+
+    def send_command(self):
+        command = self.command_line.text()
+        print(f"Command: {command}")
+        
+        if command == "start":
+            self.start_acquisition()
+        elif command == "stop":
+            self.stop_acquisition()
+        elif command == "reset":
+            self.clear_plot()
+        elif command == "unit":
+            self.toogleUnit(True)
+        elif command.startswith("acqtime"):
+            timestep = int(command.split()[1])
+            self.set_acquisition_time(timestep)
+        else:
+            print("Command not recognized")
 
     def start_acquisition(self):
         #self.clear_plot()
