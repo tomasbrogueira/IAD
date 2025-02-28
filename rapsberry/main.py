@@ -184,19 +184,12 @@ class DataPlotter(QMainWindow):
     def stop_acquisition(self):
         """ Stops data acquisition """
         self.timer.stop()
-        if ser:
-            ser.write(bytes([STOP_ACQUISITION]))
         ser.reset_input_buffer()
 
     def clear_plot(self):
         """ Clears the plot """
         self.data = {pin: [] for pin in self.selected_pins}
-        #for curve in self.plot_curves.values():
-        #    curve.setData([])
         self.plot_widget.clear()  # Remove all plot items, including curves and legend entries
-        #self.plot_curves = {}     # Clear the dictionary of plot curves
-        #self.data = {}            # Reset the data storage
-        #self.selected_pins = []   # Clear selected pins to avoid residual data
         self.needsReset=True
         self.starting_time = None
 
