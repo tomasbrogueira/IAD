@@ -148,12 +148,16 @@ class DataPlotter(QMainWindow):
         elif command == "reset":
             self.reset_button.click()
         elif command == "unit":
-            self.ADCswitch.toggle()
+            self.ADCswitch.setChecked(not self.ADCswitch.isChecked())
         elif command.startswith("acqtime"):
             timestep = int(command.split()[1])
+            if timestep not in self.time_dropdown:
+                print("Invalid acquisition time")
+                return
             self.time_dropdown.setCurrentText(str(timestep))
         else:
             print("Command not recognized")
+        self.command_line.clear()
 
     def start_acquisition(self):
         #self.clear_plot()
