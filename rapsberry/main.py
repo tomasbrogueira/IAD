@@ -55,6 +55,7 @@ class DataPlotter(QMainWindow):
         self.starting_time = None
         self.needsReset = True
         self.conversionFactor = 1
+        self.persistence = False
 
     def initUI(self):
         # Create central widget and layout
@@ -119,6 +120,14 @@ class DataPlotter(QMainWindow):
         button_layout.addWidget(self.ADCswitch)
         button_layout.addWidget(self.ADClabel)
 
+        # temporary or persistent data
+        self.PersistencySwitch = PyQtSwitch()
+        self.PersistencySwitch.toggled.connect(self.togglePersistence)
+        self.PersistencyLabel = QLabel()
+        self.PersistencyLabel.setText("Temporary Plot")
+        button_layout.addWidget(self.PersistencySwitch)
+        button_layout.addWidget(self.PersistencyLabel)
+
         # simple terminal window to input commands
         self.command_line = QLineEdit()  # TODO: ADD TEXT "ENTER COMMAND"
         self.command_line.returnPressed.connect(self.send_command)
@@ -148,6 +157,14 @@ class DataPlotter(QMainWindow):
             self.timestep = timestep
         print(f"Acquisition time set to: {self.timestep} ms")
         self.timer.start(self.timestep)
+
+    def togglePersistence(self, f):
+        if f:
+            self.persistence = True
+            self.PersistencyLabel.setText("Persistent Plot")
+        else:
+            self.persistence = False
+            self.PersistencyLabel.setText("Temporary Plot")
 
     def send_command(self):
         command = self.command_line.text()
@@ -238,7 +255,7 @@ class DataPlotter(QMainWindow):
                     )
 
                     # Keep only the last 100 points
-                    if len(self.data[pin]) > 100:
+                    if len(self.data[pin]) > 100 and not self.persistence:
                         self.data[pin].pop(0)
 
                 timestamps, values = zip(*self.data[pin])
