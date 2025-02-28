@@ -208,6 +208,8 @@ class DataPlotter(QMainWindow):
                     self.pin_list.item(
                         [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
                     ).setSelected(True)
+                    self.selected_pins.append(pin)
+
             except IndexError:
                 print("Error: Invalid pin number. Usage: 'pin A0'")
                 return
@@ -223,6 +225,8 @@ class DataPlotter(QMainWindow):
                     self.pin_list.item(
                         [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
                     ).setSelected(False)
+
+                    self.selected_pins.remove(pin)
             except IndexError:
                 print("Error: Invalid pin number. Usage: 'unpin A0'")
                 return
@@ -234,7 +238,7 @@ class DataPlotter(QMainWindow):
                 
                 # Use PyQtGraph's CSV exporter
                 exporter = CSVExporter(self.plot_widget.plotItem)
-                exporter.export(filename=filename)
+                exporter.export(filename)
                 print(f"Plot data saved to {filename}")
             except Exception as e:
                 print(f"Export error: {str(e)}")
