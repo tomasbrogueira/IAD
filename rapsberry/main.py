@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QLineEdit,
 )
 import pyqtgraph as pg
+from pyqtgraph.exporters import CSVExporter
 from PyQt5.QtCore import QTimer
 from pyqt_switch import PyQtSwitch
 
@@ -195,6 +196,49 @@ class DataPlotter(QMainWindow):
             except (ValueError, IndexError):
                 print("Error: Invalid time value. Usage: 'acqtime 150'")
                 return
+            
+        elif command.startswith("pin"):
+            try:
+                pin = command.split()[1]
+                if pin not in ["A0", "A1", "A2", "A3", "A4", "A5"]:
+                    print("Error: Invalid pin number. Usage: 'pin A0'")
+                    return
+
+                if pin not in self.selected_pins:
+                    self.pin_list.item(
+                        [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
+                    ).setSelected(True)
+            except IndexError:
+                print("Error: Invalid pin number. Usage: 'pin A0'")
+                return
+            
+        elif command.startswith("unpin"):
+            try:
+                pin = command.split()[1]
+                if pin not in ["A0", "A1", "A2", "A3", "A4", "A5"]:
+                    print("Error: Invalid pin number. Usage: 'unpin A0'")
+                    return
+
+                if pin in self.selected_pins:
+                    self.pin_list.item(
+                        [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
+                    ).setSelected(False)
+            except IndexError:
+                print("Error: Invalid pin number. Usage: 'unpin A0'")
+                return
+            
+        elif command.startswith("savecsv"):
+            try:
+                parts = command.split()
+                filename = parts[1] if len(parts) > 1 else "data.csv"
+                
+                # Use PyQtGraph's CSV exporter
+                exporter = CSVExporter(self.plot_widget.plotItem)
+                exporter.export(filename=filename)
+                print(f"Plot data saved to {filename}")
+            except Exception as e:
+                print(f"Export error: {str(e)}")
+            
         else:
             print("Command not recognized")
             return
@@ -205,6 +249,11 @@ class DataPlotter(QMainWindow):
         # self.clear_plot()
         """Starts data acquisition for multiple pins"""
         ser.reset_input_buffer()
+
+        if len(self.get_selected_pins()) == 0:
+            print("Error: No pins selected")
+            return
+        
         if ser:
             if self.needsReset:
                 self.selected_pins = self.get_selected_pins()
