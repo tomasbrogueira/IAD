@@ -3,18 +3,19 @@ import struct
 import time
 
 # Configuration: Update this to match your Arduino's serial port.
-SERIAL_PORT = '/dev/ttyACM0'
+SERIAL_PORT = "/dev/ttyACM0"
 BAUD_RATE = 9600
 
 # Action codes (must match those in the Arduino code)
 STOP_ACQUISITION = 1
 START_ACQUISITION = 2
-ACQUIRING_DATA   = 3
-SET_TIMESTEP     = 4
+ACQUIRING_DATA = 3
+SET_TIMESTEP = 4
 
 # Initialize serial connection
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
 time.sleep(2)  # Allow time for Arduino to reset: at least 1.5 seconds
+
 
 def start_acquisition(pin_index):
     """
@@ -26,6 +27,7 @@ def start_acquisition(pin_index):
     ser.write(bytes([START_ACQUISITION, pin_index]))
     time.sleep(0.1)  # Short delay to allow Arduino processing
 
+
 def set_timestep(new_timestep):
     """
     Send the SET_TIMESTEP command.
@@ -33,8 +35,9 @@ def set_timestep(new_timestep):
     """
     ser.write(bytes([SET_TIMESTEP]))
     # Send the integer as string followed by a newline (which parseInt will use as a terminator)
-    ser.write(f"{new_timestep}\n".encode('ascii'))
+    ser.write(f"{new_timestep}\n".encode("ascii"))
     time.sleep(0.1)
+
 
 def read_arduino_data():
     """
@@ -48,13 +51,14 @@ def read_arduino_data():
         return None
 
     # Unpack binary data into three little-endian floats
-    slope, intercept, uncertainty = struct.unpack('<fff', data)
+    slope, intercept, uncertainty = struct.unpack("<fff", data)
     return slope, intercept, uncertainty
+
 
 def main():
     # Example: Start acquisition on analog pin A0 (index 0)
     start_acquisition(0)
-    
+
     # Optionally, you can change the timestep by calling:
     # set_timestep(1000)
 
@@ -68,6 +72,7 @@ def main():
         print(f"Slope: {slope:.2f}")
         print(f"Intercept: {intercept:.2f}")
         print(f"Uncertainty: {uncertainty:.2f}")
+
 
 if __name__ == "__main__":
     main()

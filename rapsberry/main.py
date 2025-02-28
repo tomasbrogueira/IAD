@@ -3,7 +3,18 @@ import serial
 import struct
 import time
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QSizePolicy, QMainWindow, QApplication, QListWidget, QAbstractItemView, QLineEdit
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QPushButton,
+    QSizePolicy,
+    QMainWindow,
+    QApplication,
+    QListWidget,
+    QAbstractItemView,
+    QLineEdit,
 )
 import pyqtgraph as pg
 from PyQt5.QtCore import QTimer
@@ -24,6 +35,7 @@ try:
 except serial.SerialException:
     print("Error: Could not open serial port.")
     ser = None
+
 
 class DataPlotter(QMainWindow):
     def __init__(self):
@@ -102,13 +114,13 @@ class DataPlotter(QMainWindow):
         self.ADCswitch = PyQtSwitch()
         self.ADCswitch.toggled.connect(self.toogleUnit)
         self.ADClabel = QLabel()
-        self.ADClabel.setText('Bits')
-        #self.reset_button.clicked.connect(self.clear_plot)
+        self.ADClabel.setText("Bits")
+        # self.reset_button.clicked.connect(self.clear_plot)
         button_layout.addWidget(self.ADCswitch)
         button_layout.addWidget(self.ADClabel)
 
         # simple terminal window to input commands
-        self.command_line = QLineEdit()
+        self.command_line = QLineEdit()  # TODO: ADD TEXT "ENTER COMMAND"
         self.command_line.returnPressed.connect(self.send_command)
         button_layout.addWidget(self.command_line)
 
@@ -124,12 +136,12 @@ class DataPlotter(QMainWindow):
         main_layout.addWidget(self.plot_widget)
 
     def get_selected_pins(self):
-        """ Returns a list of selected analog pins """
+        """Returns a list of selected analog pins"""
         selected_items = self.pin_list.selectedItems()
         return [item.text() for item in selected_items]
 
     def set_acquisition_time(self, timestep=None):
-        """ Updates the acquisition time based on dropdown selection """
+        """Updates the acquisition time based on dropdown selection"""
         if not timestep:
             self.timestep = int(self.time_dropdown.currentText())
         else:
@@ -140,7 +152,7 @@ class DataPlotter(QMainWindow):
     def send_command(self):
         command = self.command_line.text()
         print(f"Command: {command}")
-        
+
         if command == "start":
             self.start_button.click()
         elif command == "stop":
@@ -150,28 +162,43 @@ class DataPlotter(QMainWindow):
         elif command == "unit":
             self.ADCswitch.setChecked(not self.ADCswitch.isChecked())
         elif command.startswith("acqtime"):
-            timestep = int(command.split()[1])
-            if timestep not in self.time_dropdown:
-                print("Invalid acquisition time")
+            try:
+                timestep = int(command.split()[1])
+                if timestep < 10:
+                    print("Error: Acquisition time must be at least 10 ms")
+                    return
+
+                self.set_acquisition_time(timestep)  # Directly set any value
+                if str(timestep) not in [
+                    self.time_dropdown.itemText(i)
+                    for i in range(self.time_dropdown.count())
+                ]:
+                    self.time_dropdown.addItem(str(timestep))
+                self.time_dropdown.setCurrentText(str(timestep))
+            except (ValueError, IndexError):
+                print("Error: Invalid time value. Usage: 'acqtime 150'")
                 return
-            self.time_dropdown.setCurrentText(str(timestep))
         else:
             print("Command not recognized")
+            return
+
         self.command_line.clear()
 
     def start_acquisition(self):
-        #self.clear_plot()
-        """ Starts data acquisition for multiple pins """
+        # self.clear_plot()
+        """Starts data acquisition for multiple pins"""
         ser.reset_input_buffer()
         if ser:
             if self.needsReset:
                 self.selected_pins = self.get_selected_pins()
-                self.data = {pin: [] for pin in self.selected_pins}  # Initialize data storage
+                self.data = {
+                    pin: [] for pin in self.selected_pins
+                }  # Initialize data storage
                 self.plot_curves = {}  # Clear old curves
 
                 # Create a different color for each pin
-                colors = ['r', 'g', 'b', 'y', 'm', 'c']  
-            
+                colors = ["r", "g", "b", "y", "m", "c"]
+
                 for i, pin in enumerate(self.selected_pins):
                     self.plot_curves[pin] = self.plot_widget.plot(
                         pen=colors[i % len(colors)], name=pin
@@ -186,19 +213,19 @@ class DataPlotter(QMainWindow):
             self.timer.start(self.timestep)
 
     def stop_acquisition(self):
-        """ Stops data acquisition """
+        """Stops data acquisition"""
         self.timer.stop()
         ser.reset_input_buffer()
 
     def clear_plot(self):
-        """ Clears the plot """
+        """Clears the plot"""
         self.data = {pin: [] for pin in self.selected_pins}
         self.plot_widget.clear()  # Remove all plot items, including curves and legend entries
-        self.needsReset=True
+        self.needsReset = True
         self.starting_time = None
 
     def update_plot(self):
-        """ Reads and plots data from multiple pins """
+        """Reads and plots data from multiple pins"""
         if ser:
             for i in range(len(self.selected_pins)):
                 pin, value, timestamp = self.read_arduino_data()
@@ -206,22 +233,23 @@ class DataPlotter(QMainWindow):
                     self.starting_time = timestamp
 
                 if pin in self.data:
-                    self.data[pin].append((timestamp-self.starting_time,value*self.conversionFactor))
+                    self.data[pin].append(
+                        (timestamp - self.starting_time, value * self.conversionFactor)
+                    )
 
                     # Keep only the last 100 points
                     if len(self.data[pin]) > 100:
                         self.data[pin].pop(0)
 
                 timestamps, values = zip(*self.data[pin])
-                self.plot_curves[pin].setData(timestamps,values)
+                self.plot_curves[pin].setData(timestamps, values)
 
-            
             for pin in self.selected_pins:
                 pin_number = int(pin[1])  # Convert "A0" to 0, "A1" to 1, etc.
                 ser.write(bytes([START_ACQUISITION, pin_number]))
 
     def read_arduino_data(self):
-        """ Reads 12 bytes from Arduino and extracts timestamp, pin, and value """
+        """Reads 12 bytes from Arduino and extracts timestamp, pin, and value"""
         expected_bytes = 8  # 2 int (2 bytes each) + 1 long
         data = ser.read(expected_bytes)
 
@@ -233,15 +261,14 @@ class DataPlotter(QMainWindow):
         pin = f"A{pin_number}"
         return pin, value, timestamp
 
-    def toogleUnit(self,f):
+    def toogleUnit(self, f):
         if f:
-            self.conversionFactor=5/1024
-            self.ADClabel.setText('Volts')
-
+            self.conversionFactor = 5 / 1024
+            self.ADClabel.setText("Volts")
 
         else:
-            self.conversionFactor=1
-            self.ADClabel.setText('Bits')
+            self.conversionFactor = 1
+            self.ADClabel.setText("Bits")
 
 
 if __name__ == "__main__":
