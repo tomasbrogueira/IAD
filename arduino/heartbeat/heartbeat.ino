@@ -30,12 +30,12 @@ void loop() {
     }
     if (action == START_ACQUISITION)
     {
-        sensorPin = pins[pin = Serial.read()];
-        int value = analogRead(sensorPin);
-        currentTime = millis();
+        sensorPin = pins[pin = Serial.read()];          // convert protocol pin (0) to real pin (A0)
+        int value = analogRead(sensorPin);              // acquire data
+        currentTime = millis();                         // store time of measurment
         Serial.write((uint8_t*)&value, sizeof(value));  // send value (2 byte)
         Serial.write((uint8_t*)&pin, sizeof(pin));      // send aquisition pin (2 byte)
         Serial.write((uint8_t*)&currentTime, sizeof(currentTime));  // send time of aquisition (4 byte)
     }
-    action = STOP_ACQUISITION;
+    action = STOP_ACQUISITION;      // do not reacquire automatically, wait for RPi
 }
