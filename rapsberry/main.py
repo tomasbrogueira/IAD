@@ -43,20 +43,20 @@ class DataPlotter(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Arduino Multi-Pin Data Plotter")
-        self.setGeometry(100, 100, 800, 500)
+        self.setGeometry(100, 100, 800, 500)    # set window size
 
         self.initUI()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_plot)
+        self.timer = QTimer()       # timer for data acquisition
+        self.timer.timeout.connect(self.update_plot)    # update with new data
 
         self.timestep = 100  # Default acquisition time
         self.selected_pins = []  # List to store selected pins
         self.data = {}  # Dictionary to store data for each pin
         self.plot_curves = {}  # Dictionary for plot curves
-        self.starting_time = None
-        self.needsReset = True
-        self.conversionFactor = 1
-        self.persistence = False
+        self.starting_time = None   # time for 1st measurements
+        self.needsReset = True  # should labels be replotted
+        self.conversionFactor = 1   # show in Volts or in bits
+        self.persistence = False    # whether to limit samples poits to 100
 
     def initUI(self):
         # Create central widget and layout
@@ -90,6 +90,9 @@ class DataPlotter(QMainWindow):
         self.pin_list.addItems(["A0", "A1", "A2", "A3", "A4", "A5"])
         self.pin_list.setSelectionMode(QAbstractItemView.MultiSelection)
         self.pin_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # Select the first item (A0)
+        initial_item = self.pin_list.item(0)
+        initial_item.setSelected(True)
         dropdown_layout.addWidget(self.pin_list)
 
         # Create horizontal layout for buttons
@@ -117,11 +120,10 @@ class DataPlotter(QMainWindow):
         self.ADCswitch.toggled.connect(self.toogleUnit)
         self.ADClabel = QLabel()
         self.ADClabel.setText("Bits")
-        # self.reset_button.clicked.connect(self.clear_plot)
         button_layout.addWidget(self.ADCswitch)
         button_layout.addWidget(self.ADClabel)
 
-        # temporary or persistent data
+        # temporary or persistent data switcher
         self.PersistencySwitch = PyQtSwitch()
         self.PersistencySwitch.toggled.connect(self.togglePersistence)
         self.PersistencyLabel = QLabel()
@@ -131,6 +133,7 @@ class DataPlotter(QMainWindow):
 
         # simple terminal window to input commands
         self.command_line = QLineEdit()  # TODO: ADD TEXT "ENTER COMMAND"
+        self.command_line.setPlaceholderText("ENTER COMMAND")
         self.command_line.returnPressed.connect(self.send_command)
         button_layout.addWidget(self.command_line)
 
@@ -160,6 +163,7 @@ class DataPlotter(QMainWindow):
         self.timer.start(self.timestep)
 
     def togglePersistence(self, f):
+        """Whether to store all data or to restrict to 100 samples"""
         if f:
             self.persistence = True
             self.PersistencyLabel.setText("Persistent Plot")
@@ -168,6 +172,7 @@ class DataPlotter(QMainWindow):
             self.PersistencyLabel.setText("Temporary Plot")
 
     def send_command(self):
+        """Manages the CLI of this script"""
         command = self.command_line.text()
         print(f"Command: {command}")
 
@@ -179,7 +184,7 @@ class DataPlotter(QMainWindow):
             self.reset_button.click()
         elif command == "unit":
             self.ADCswitch.setChecked(not self.ADCswitch.isChecked())
-        elif command.startswith("acqtime"):
+        elif command.startswith("acqtime"): # usage: acqtime 100 -> set 100 ms
             try:
                 timestep = int(command.split()[1])
                 if timestep < 10:
@@ -191,13 +196,13 @@ class DataPlotter(QMainWindow):
                     self.time_dropdown.itemText(i)
                     for i in range(self.time_dropdown.count())
                 ]:
-                    self.time_dropdown.addItem(str(timestep))
-                self.time_dropdown.setCurrentText(str(timestep))
+                    self.time_dropdown.addItem(str(timestep)) # add a custom timestep to the dropdown
+                self.time_dropdown.setCurrentText(str(timestep))    # select it
             except (ValueError, IndexError):
                 print("Error: Invalid time value. Usage: 'acqtime 150'")
                 return
-            
-        elif command.startswith("pin"):
+
+        elif command.startswith("pin"): # usage: pin A0 -> select pin A0
             try:
                 pin = command.split()[1]
                 if pin not in ["A0", "A1", "A2", "A3", "A4", "A5"]:
@@ -207,14 +212,14 @@ class DataPlotter(QMainWindow):
                 if pin not in self.selected_pins:
                     self.pin_list.item(
                         [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
-                    ).setSelected(True)
-                    self.selected_pins.append(pin)
+                    ).setSelected(True) # select pin in dropdown
+                    self.selected_pins.append(pin)  # add pin to active list
 
             except IndexError:
                 print("Error: Invalid pin number. Usage: 'pin A0'")
                 return
-            
-        elif command.startswith("unpin"):
+
+        elif command.startswith("unpin"):   # usage: pin A0-> unselect pin A0
             try:
                 pin = command.split()[1]
                 if pin not in ["A0", "A1", "A2", "A3", "A4", "A5"]:
@@ -224,25 +229,25 @@ class DataPlotter(QMainWindow):
                 if pin in self.selected_pins:
                     self.pin_list.item(
                         [self.pin_list.item(i).text() for i in range(self.pin_list.count())].index(pin)
-                    ).setSelected(False)
+                    ).setSelected(False)    # unselect pin in dropdown
 
-                    self.selected_pins.remove(pin)
+                    self.selected_pins.remove(pin)  # remove pin from active list
             except IndexError:
                 print("Error: Invalid pin number. Usage: 'unpin A0'")
                 return
-            
-        elif command.startswith("savecsv"):
+
+        elif command.startswith("savecsv"): # usage: savecsv or savecsv filename.csv
             try:
                 parts = command.split()
                 filename = parts[1] if len(parts) > 1 else "data.csv"
-                
+
                 # Use PyQtGraph's CSV exporter
                 exporter = CSVExporter(self.plot_widget.plotItem)
                 exporter.export(filename)
                 print(f"Plot data saved to {filename}")
             except Exception as e:
                 print(f"Export error: {str(e)}")
-            
+
         else:
             print("Command not recognized")
             return
@@ -250,16 +255,15 @@ class DataPlotter(QMainWindow):
         self.command_line.clear()
 
     def start_acquisition(self):
-        # self.clear_plot()
         """Starts data acquisition for multiple pins"""
         ser.reset_input_buffer()
 
         if len(self.get_selected_pins()) == 0:
             print("Error: No pins selected")
             return
-        
+
         if ser:
-            if self.needsReset:
+            if self.needsReset:     # update labels if needed
                 self.selected_pins = self.get_selected_pins()
                 self.data = {
                     pin: [] for pin in self.selected_pins
@@ -299,7 +303,7 @@ class DataPlotter(QMainWindow):
         if ser:
             for i in range(len(self.selected_pins)):
                 pin, value, timestamp = self.read_arduino_data()
-                if self.starting_time is None:
+                if self.starting_time is None:  # use 1st time as 0 seconds marker
                     self.starting_time = timestamp
 
                 if pin in self.data:
@@ -307,14 +311,14 @@ class DataPlotter(QMainWindow):
                         (timestamp - self.starting_time, value * self.conversionFactor)
                     )
 
-                    # Keep only the last 100 points
+                    # Keep only the last 100 points, if not persistent
                     if len(self.data[pin]) > 100 and not self.persistence:
                         self.data[pin].pop(0)
 
                 timestamps, values = zip(*self.data[pin])
                 self.plot_curves[pin].setData(timestamps, values)
 
-            for pin in self.selected_pins:
+            for pin in self.selected_pins: # ask form more acquisition
                 pin_number = int(pin[1])  # Convert "A0" to 0, "A1" to 1, etc.
                 ser.write(bytes([START_ACQUISITION, pin_number]))
 
@@ -327,13 +331,13 @@ class DataPlotter(QMainWindow):
             print("Error: Incomplete data received")
             return None, None, None
 
-        value, pin_number, timestamp = struct.unpack("<hhI", data)
+        value, pin_number, timestamp = struct.unpack("<hhI", data) # short+short+unsigned long
         pin = f"A{pin_number}"
         return pin, value, timestamp
 
     def toogleUnit(self, f):
         if f:
-            self.conversionFactor = 5 / 1024
+            self.conversionFactor = 5 / 1024    # volts conversion
             self.ADClabel.setText("Volts")
 
         else:
