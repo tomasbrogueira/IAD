@@ -236,6 +236,7 @@ class DataPlotter(QMainWindow):
                 print("Error: Invalid pin number. Usage: 'unpin A0'")
                 return
 
+        # TODO testar com doi pinos
         elif command.startswith("savecsv"): # usage: savecsv or savecsv filename.csv
             try:
                 parts = command.split()
