@@ -132,7 +132,7 @@ class DataPlotter(QMainWindow):
         button_layout.addWidget(self.PersistencyLabel)
 
         # simple terminal window to input commands
-        self.command_line = QLineEdit()  # TODO: ADD TEXT "ENTER COMMAND"
+        self.command_line = QLineEdit() 
         self.command_line.setPlaceholderText("ENTER COMMAND")
         self.command_line.returnPressed.connect(self.send_command)
         button_layout.addWidget(self.command_line)
@@ -236,7 +236,6 @@ class DataPlotter(QMainWindow):
                 print("Error: Invalid pin number. Usage: 'unpin A0'")
                 return
 
-        # TODO testar com doi pinos
         elif command.startswith("savecsv"): # usage: savecsv or savecsv filename.csv
             try:
                 parts = command.split()
@@ -290,14 +289,14 @@ class DataPlotter(QMainWindow):
     def stop_acquisition(self):
         """Stops data acquisition"""
         self.timer.stop()
-        ser.reset_input_buffer()
+        ser.reset_input_buffer()        # remove any left over data in buffer
 
     def clear_plot(self):
         """Clears the plot"""
         self.data = {pin: [] for pin in self.selected_pins}
         self.plot_widget.clear()  # Remove all plot items, including curves and legend entries
-        self.needsReset = True
-        self.starting_time = None
+        self.needsReset = True    # Needs to redraw labels
+        self.starting_time = None   # Needs to reset time
 
     def update_plot(self):
         """Reads and plots data from multiple pins"""
