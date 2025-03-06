@@ -318,9 +318,7 @@ class DataPlotter(QMainWindow):
                     self.starting_time = timestamp
 
                 if pin in self.data:
-                    self.data[pin].append(
-                        (timestamp - self.starting_time, value * self.conversionFactor)
-                    )
+                    self.data[pin].append(((timestamp - self.starting_time) / 1000, value * self.conversionFactor))  # Convert ms to sec
 
                     # Keep only the last 100 points, if not persistent
                     if len(self.data[pin]) > 100 and not self.persistence:
