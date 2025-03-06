@@ -184,6 +184,7 @@ class DataPlotter(QMainWindow):
             self.reset_button.click()
         elif command == "unit":
             self.ADCswitch.setChecked(not self.ADCswitch.isChecked())
+            self.reset_button.click()
         elif command.startswith("acqtime"): # usage: acqtime 100 -> set 100 ms
             try:
                 timestep = int(command.split()[1])
