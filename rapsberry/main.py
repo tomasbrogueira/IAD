@@ -148,7 +148,7 @@ class DataPlotter(QMainWindow):
         self.plot_widget.addLegend()
         # Set initial axis labels (default: bits)
         self.plot_widget.setLabel("left", "ADC Value", units="bits")
-        self.plot_widget.setLabel("bottom", "Time", units="ms")  # X-axis always in seconds
+        self.plot_widget.setLabel("bottom", "Time", units="s")  # X-axis always in seconds
         main_layout.addWidget(self.plot_widget)
 
     def get_selected_pins(self):
@@ -358,7 +358,6 @@ class DataPlotter(QMainWindow):
             self.plot_widget.setLabel("left", "ADC Value", units="bits")  # Update Y-axis label
     
         self.reset_button.click()
-        self.start_button.click()
 
 
 if __name__ == "__main__":
