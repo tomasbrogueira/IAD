@@ -257,33 +257,41 @@ class DataPlotter(QMainWindow):
     def start_acquisition(self):
         """Starts data acquisition for multiple pins"""
         ser.reset_input_buffer()
-
+    
         if len(self.get_selected_pins()) == 0:
             print("Error: No pins selected")
+            self.start_button.setText("No Pin Selected")
+            self.start_button.setStyleSheet("color: red;")  # Set text color to red
+            
+            # Reset the button text after 1 second
+            QTimer.singleShot(1000, lambda: self.start_button.setText("Start"))
+            QTimer.singleShot(1000, lambda: self.start_button.setStyleSheet(""))  # Reset to default color
             return
-
+    
+        # Reset button text and color in case of a previous error
+        self.start_button.setText("Start")
+        self.start_button.setStyleSheet("")
+    
         if ser:
-            if self.needsReset:     # update labels if needed
+            if self.needsReset:  # update labels if needed
                 self.selected_pins = self.get_selected_pins()
-                self.data = {
-                    pin: [] for pin in self.selected_pins
-                }  # Initialize data storage
+                self.data = {pin: [] for pin in self.selected_pins}  # Initialize data storage
                 self.plot_curves = {}  # Clear old curves
-
+    
                 # Create a different color for each pin
                 colors = ["r", "g", "b", "y", "m", "c"]
-
+    
                 for i, pin in enumerate(self.selected_pins):
                     self.plot_curves[pin] = self.plot_widget.plot(
                         pen=colors[i % len(colors)], name=pin
                     )
                 self.needsReset = False
-
+    
             # Send start signal for each pin
             for pin in self.selected_pins:
                 pin_number = int(pin[1])  # Convert "A0" to 0, "A1" to 1, etc.
                 ser.write(bytes([START_ACQUISITION, pin_number]))
-
+    
             self.timer.start(self.timestep)
 
     def stop_acquisition(self):
