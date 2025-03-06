@@ -146,6 +146,9 @@ class DataPlotter(QMainWindow):
         # Create plot widget
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.addLegend()
+        # Set initial axis labels (default: bits)
+        self.plot_widget.setLabel("left", "ADC Value", units="bits")
+        self.plot_widget.setLabel("bottom", "Time", units="ms")  # X-axis always in seconds
         main_layout.addWidget(self.plot_widget)
 
     def get_selected_pins(self):
@@ -344,14 +347,16 @@ class DataPlotter(QMainWindow):
         return pin, value, timestamp
 
     def toogleUnit(self, f):
+        """Toggles between Bits and Volts mode and updates axis labels"""
         if f:
-            self.conversionFactor = 5 / 1024    # volts conversion
+            self.conversionFactor = 5 / 1024  # Convert ADC value to volts
             self.ADClabel.setText("Volts")
-
+            self.plot_widget.setLabel("left", "Voltage", units="V")  # Update Y-axis label
         else:
             self.conversionFactor = 1
             self.ADClabel.setText("Bits")
-
+            self.plot_widget.setLabel("left", "ADC Value", units="bits")  # Update Y-axis label
+    
         self.reset_button.click()
         self.start_button.click()
 
